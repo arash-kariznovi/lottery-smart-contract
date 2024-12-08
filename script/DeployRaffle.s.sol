@@ -4,16 +4,53 @@ pragma solidity ^0.8.19;
 
 import {Script} from "forge-std/Script.sol";
 import {Raffle} from "../src/Raffle.sol";
+import {HelperConfig} from "./HelperConfig.s.sol";
+import {CreateSubscription, FundSubscription, AddConsumer} from "./Interactions.s.sol";
 
-// contract DeployRaffle is Script{
-//     function run() external returns(Raffle){
-//         vm.startBroadcast();
-//         Raffle raffle = new Raffle(,,
-//         0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
-//         0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
-//         ,40000);
-//         vm.stopBroadcast();
+contract DeployRaffle is Script {
+    function run() external {
+        deployContract();
+    }
 
-//         return raffle;
-//     }
-// }
+    function deployContract() public returns (Raffle, HelperConfig) {
+        HelperConfig helperConfig = new HelperConfig();
+        // local => deploy mocks
+        // sepolia => get sepolia config
+        HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
+
+        if (config.subscriptionId == 0) {
+            //create subscription
+            CreateSubscription createSubscription = new CreateSubscription();
+            (config.subscriptionId, config.vrfCoordinator) = createSubscription
+                .createSubscription(config.vrfCoordinator, config.account);
+
+            //fund subscription
+            FundSubscription fundSubscription = new FundSubscription();
+            fundSubscription.fundSubscription(
+                config.vrfCoordinator,
+                config.subscriptionId,
+                config.link,
+                config.account
+            );
+        }
+        vm.startBroadcast(config.account);
+        Raffle raffle = new Raffle({
+            entranceFee: config.entranceFee,
+            interval: config.interval,
+            vrfCoordinator: config.vrfCoordinator,
+            gasLane: config.gasLane,
+            subscriptionId: config.subscriptionId,
+            callbackGasLimit: config.callbackGasLimit
+        });
+        vm.stopBroadcast();
+
+        AddConsumer addConsumer = new AddConsumer();
+        addConsumer.addConusmer(
+            address(raffle),
+            config.vrfCoordinator,
+            config.subscriptionId,
+            config.account
+        );
+        return (raffle, helperConfig);
+    }
+}
