@@ -1,4 +1,4 @@
-## Layout of Contract:
+<!-- ## Layout of Contract:
 - version
 - imports
 - errors
@@ -19,7 +19,7 @@
 - internal
 - private
 - internal & private view & pure functions
-- external & public view & pure functions
+- external & public view & pure functions -->
 
 ## Contract address
 0x93f54F016FF26E6eC356FcfF28A3678666598b54
